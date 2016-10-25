@@ -15,31 +15,43 @@ type Numbers struct {
 }
 
 func main() {
+	// we start two simple dispatcher with 4 workers each
 	adder := wpool.NewDispatcher("adder", 4)
 	multiplier := wpool.NewDispatcher("multiplier", 4)
 
+	// ProcessorFn "add"
 	add := func(w wpool.Work, dName string, destination *wpool.Dispatcher) {
 		nums := w.(Numbers)
+
 		sum := nums.A + nums.B
 
+		// just make this function "doing stuff"
 		time.Sleep(1 * time.Second)
 
+		// pipe resulting work to destination Dispatcher
 		destination.WorkQueue <- sum
 	}
 
+	// ProcessorFn "multiply"
 	multiply := func(w wpool.Work, dName string, destination *wpool.Dispatcher) {
 		value := w.(int)
 
+		// just make this function "doing stuff"
 		time.Sleep(1 * time.Second)
 
 		log.Println(dName, value*2)
 
+		// pipe resulting work to destination Dispatcher
 		destination.WorkQueue <- Numbers{value, 2}
 	}
 
+	// start dispatcher with 4 workers that run "add" function and pipe results to "multiplier" dispatcher
 	adder.Start(add, &multiplier)
+
+	// start dispatcher with 4 workers that run "multiply" function and pipe results to "adder" dispatcher
 	multiplier.Start(multiply, &adder)
 
+	// give "adder" some Work
 	adder.WorkQueue <- Numbers{1, 2}
 	adder.WorkQueue <- Numbers{2, 2}
 	adder.WorkQueue <- Numbers{3, 2}
@@ -49,6 +61,7 @@ func main() {
 	adder.WorkQueue <- Numbers{7, 2}
 	adder.WorkQueue <- Numbers{8, 2}
 
+	// block until app is terminated
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, os.Kill)
 	<-c
