@@ -18,25 +18,27 @@ func main() {
 	adder := wpool.NewDispatcher("adder", 4)
 	multiplier := wpool.NewDispatcher("multiplier", 4)
 
-	add := func(w wpool.Work, dName string) {
+	add := func(w wpool.Work, dName string, destination *wpool.Dispatcher) {
 		nums := w.(Numbers)
 		sum := nums.A + nums.B
 
 		time.Sleep(1 * time.Second)
 
-		multiplier.WorkQueue <- sum
+		destination.WorkQueue <- sum
 	}
 
-	multiply := func(w wpool.Work, dName string) {
+	multiply := func(w wpool.Work, dName string, destination *wpool.Dispatcher) {
 		value := w.(int)
 
 		time.Sleep(1 * time.Second)
 
 		log.Println(dName, value*2)
+
+		destination.WorkQueue <- Numbers{value, 2}
 	}
 
-	adder.Start(add)
-	multiplier.Start(multiply)
+	adder.Start(add, &multiplier)
+	multiplier.Start(multiply, &adder)
 
 	adder.WorkQueue <- Numbers{1, 2}
 	adder.WorkQueue <- Numbers{2, 2}

@@ -4,7 +4,7 @@ import log "github.com/Sirupsen/logrus"
 
 type Work interface{}
 
-type ProcessorFn func(w Work, dispatcherName string)
+type ProcessorFn func(w Work, dispatcherName string, destination *Dispatcher)
 
 type Dispatcher struct {
 	Name        string
@@ -22,11 +22,11 @@ func NewDispatcher(name string, nworkers int) Dispatcher {
 	}
 }
 
-func (d Dispatcher) Start(pfn ProcessorFn) Dispatcher {
+func (d Dispatcher) Start(pfn ProcessorFn, destination *Dispatcher) Dispatcher {
 	log.Infof("[%s] Starting [%d] workers", d.Name, d.NWorkers)
 
 	for i := 0; i < d.NWorkers; i++ {
-		worker := NewWorker(i+1, d.WorkerQueue, pfn)
+		worker := NewWorker(i+1, d.WorkerQueue, pfn, destination)
 		worker.Start(d.Name)
 	}
 
@@ -56,9 +56,10 @@ type Worker struct {
 	WorkerQueue chan chan Work
 	QuitChan    chan bool
 	PFN         ProcessorFn
+	Destination *Dispatcher
 }
 
-func NewWorker(id int, workerQueue chan chan Work, pfn ProcessorFn) Worker {
+func NewWorker(id int, workerQueue chan chan Work, pfn ProcessorFn, destination *Dispatcher) Worker {
 
 	worker := Worker{
 		ID:          id,
@@ -66,6 +67,7 @@ func NewWorker(id int, workerQueue chan chan Work, pfn ProcessorFn) Worker {
 		WorkerQueue: workerQueue,
 		QuitChan:    make(chan bool),
 		PFN:         pfn,
+		Destination: destination,
 	}
 
 	return worker
@@ -78,7 +80,7 @@ func (w *Worker) Start(dispatcherName string) {
 
 			select {
 			case work := <-w.Work:
-				w.PFN(work, dispatcherName)
+				w.PFN(work, dispatcherName, w.Destination)
 
 			case <-w.QuitChan:
 				log.Infof("[%s] worker %d stopping", dispatcherName, w.ID)

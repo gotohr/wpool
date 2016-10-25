@@ -32,7 +32,7 @@ func main() {
 	extractor := wpool.NewDispatcher("extractor", 10)
 	downloader := wpool.NewDispatcher("downloader", 10)
 
-	fetch := func(w wpool.Work, dispatcherName string) {
+	fetch := func(w wpool.Work, dispatcherName string, destination *wpool.Dispatcher) {
 		img := w.(ImgurImage)
 
 		response, err := goreq.Request{Uri: img.Link}.Do()
@@ -47,7 +47,7 @@ func main() {
 		defer response.Body.Close()
 		html, _ := response.Body.ToString()
 		img.Html = html
-		extractor.WorkQueue <- img
+		destination.WorkQueue <- img
 
 		log.WithFields(log.Fields{
 			"dispatcher": dispatcherName,
@@ -55,7 +55,7 @@ func main() {
 		}).Info("fetched url")
 	}
 
-	extract := func(w wpool.Work, dispatcherName string) {
+	extract := func(w wpool.Work, dispatcherName string, destination *wpool.Dispatcher) {
 		img := w.(ImgurImage)
 		doc, err := goquery.NewDocumentFromReader(bytes.NewBufferString(img.Html))
 		if err != nil {
@@ -69,7 +69,7 @@ func main() {
 		src, found := doc.Find(selector).Attr("src")
 		if found {
 			img.Src = src
-			downloader.WorkQueue <- img
+			destination.WorkQueue <- img
 			log.WithFields(log.Fields{
 				"dispatcher": dispatcherName,
 				"src":        src,
@@ -81,7 +81,7 @@ func main() {
 		}
 	}
 
-	download := func(w wpool.Work, dispatcherName string) {
+	download := func(w wpool.Work, dispatcherName string, destination *wpool.Dispatcher) {
 		img := w.(ImgurImage)
 		response, err := goreq.Request{Uri: "http:" + img.Src}.Do()
 		if err != nil {
@@ -114,9 +114,9 @@ func main() {
 
 	}
 
-	fetcher.Start(fetch)
-	extractor.Start(extract)
-	downloader.Start(download)
+	fetcher.Start(fetch, &extractor)
+	extractor.Start(extract, &downloader)
+	downloader.Start(download, nil)
 
 	imgur_gallery_url := "https://api.imgur.com/3/gallery/hot/viral/0.json"
 	response, err := goreq.Request{Uri: imgur_gallery_url}.Do()
