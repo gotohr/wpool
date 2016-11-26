@@ -1,6 +1,8 @@
 # wpool
 golang worker pool library with example(s)
 
+This lib is based on article [Writing worker queues, in Go](http://nesv.github.io/golang/2014/02/25/worker-queues-in-go.html)
+
 ## usage
 
 ```go

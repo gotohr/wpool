@@ -50,6 +50,38 @@ func (d Dispatcher) Start(pfn ProcessorFn, destination *Dispatcher) Dispatcher {
 	return d
 }
 
+type PElement struct {
+	Name     string
+	NWorkers int
+	PFN      ProcessorFn
+}
+
+type Pipeline struct {
+	Dispatchers []Dispatcher
+}
+
+func NewPipeline(elements []PElement) Pipeline {
+	pl := Pipeline{
+		Dispatchers: make([]Dispatcher, len(elements)),
+	}
+
+	for index, el := range elements {
+		pl.Dispatchers[index] = NewDispatcher(el.Name, el.NWorkers)
+	}
+
+	dispatcherNo := len(pl.Dispatchers)
+	for index, d := range pl.Dispatchers {
+		var dest *Dispatcher
+		if index+1 == dispatcherNo {
+			dest = nil
+		} else {
+			dest = &pl.Dispatchers[index+1]
+		}
+		d.Start(elements[index].PFN, dest)
+	}
+	return pl
+}
+
 type Worker struct {
 	ID          int
 	Work        chan Work

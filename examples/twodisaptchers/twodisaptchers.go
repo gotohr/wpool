@@ -39,10 +39,12 @@ func main() {
 		// just make this function "doing stuff"
 		time.Sleep(1 * time.Second)
 
-		log.Println(dName, value*2)
+		r := value * 2
+
+		log.Println(dName, r)
 
 		// pipe resulting work to destination Dispatcher
-		destination.WorkQueue <- Numbers{value, 2}
+		destination.WorkQueue <- Numbers{r, 2}
 	}
 
 	// start dispatcher with 4 workers that run "add" function and pipe results to "multiplier" dispatcher

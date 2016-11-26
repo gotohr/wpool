@@ -22,6 +22,8 @@ type ImgurImage struct {
 
 	Html string
 	Src  string
+
+	Treshold int
 }
 
 type ImgurResponse struct {

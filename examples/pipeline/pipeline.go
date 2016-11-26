@@ -12,10 +12,13 @@ import (
 )
 
 func main() {
-	imgDownloader := wpool.NewDispatcher("imgDownloader", 50).Start(DownloadImage, nil)
-	imgFetcher := wpool.NewDispatcher("imgFetcher", 50).Start(FetchUriContent, &imgDownloader)
-	imgUriExtractor := wpool.NewDispatcher("imgUriExtractor", 50).Start(ExtractImgUri, &imgFetcher)
-	htmlFetcher := wpool.NewDispatcher("htmlFetcher", 50).Start(FetchUriContent, &imgUriExtractor)
+
+	pl := wpool.NewPipeline([]wpool.PElement{
+		wpool.PElement{"htmlFetcher", 1, FetchUriContent},
+		wpool.PElement{"imgUriExtractor", 20, ExtractImgUri},
+		wpool.PElement{"imgFetcher", 30, FetchUriContent},
+		wpool.PElement{"imgDowloader", 10, DownloadImage},
+	})
 
 	r := beanrpc.New("localhost:11300")
 
@@ -51,7 +54,7 @@ func main() {
 
 		for _, img := range collection.Data {
 			fmt.Println(img.Link)
-			htmlFetcher.WorkQueue <- img.Link
+			pl.Dispatchers[0].WorkQueue <- img.Link
 		}
 		log.Println("process Params->", imgur_gallery_url)
 	})
