@@ -1,6 +1,6 @@
 package wpool
 
-import log "github.com/Sirupsen/logrus"
+import log "github.com/sirupsen/logrus"
 
 type Work interface{}
 
